@@ -8,10 +8,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Utility to SQL from input claim Xml
- */
-public class SqlFromXmlBuilder {
+public class BRNumFileBuilder {
     private static int patDobMissingCounter = 0;
     private static int mbrDobMissingCounter = 0;
     private static int badMembrIdCounter = 0;
@@ -45,14 +42,14 @@ public class SqlFromXmlBuilder {
 
 
     private static final String[] DEFAULT_ELEMENT_NAMES = new String[]{PAT_DOB, PAT_FNAME, PAT_MI, PAT_LNAME, PAT_ST, PAT_CITY, PAT_STATE, PAT_ZIP, MBR_FNAME, MBR_MI, MBR_LNAME, MBR_ST, MBR_CITY, MBR_STATE, MBR_ZIP, PROV_FNAME, PROV_LNAME, PROV_TAX_ID, CLM_BR_NBR, CLM_PROC_DCN, PAT_ACCT_NBR, MBR_ID, MBR_DOB};
-    private static Logger log = LoggerFactory.getLogger(SqlFromXmlBuilder.class);
+    private static Logger log = LoggerFactory.getLogger(BRNumFileBuilder.class);
 
     private FileWriter outputFile;
     private int fileCounter = 0;
     private int outputFileLineCounter = 0;
     private String inputFileName;
 
-    public SqlFromXmlBuilder(String inputFileName) {
+    public BRNumFileBuilder(String inputFileName) {
         try {
             this.inputFileName = inputFileName;
             outputFile = createFileWriter(inputFileName, MAX_LINES);
@@ -72,7 +69,7 @@ public class SqlFromXmlBuilder {
         if (!checkArgs(args)) {
             return;
         }
-        SqlFromXmlBuilder sqlBuilder = new SqlFromXmlBuilder(args[0]);
+        BRNumFileBuilder sqlBuilder = new BRNumFileBuilder(args[0]);
 
         try {
             XmlScraper myScraper = new XmlScraper();
@@ -86,14 +83,13 @@ public class SqlFromXmlBuilder {
                 String sql = createOutputString(values, "");
                 lineCounter++;
 
-                sqlBuilder.writeSql(sql);
+                sqlBuilder.writeText(sql);
                 line = inputFile.readLine();
             }
-            sqlBuilder.writeSql("commit;");
             sqlBuilder.closeFiles();
-            System.out.println(String.format("%s PatMissingDob: %d MbrMissing: %d DobLargeMemberId: %d XmlLinesRead: %d", args[0], patDobMissingCounter, mbrDobMissingCounter, badMembrIdCounter, lineCounter));
+            System.out.println(String.format("%s XmlLinesRead: %d", args[0], lineCounter));
         } catch (Exception e) {
-            sqlBuilder.writeSql(e.getMessage());
+            sqlBuilder.writeText(e.getMessage());
             log.error("Error: ", e);
         }
     }
@@ -103,16 +99,11 @@ public class SqlFromXmlBuilder {
             System.out.println("Please pass in a file name & search criteria, ie c:/mydir/my.xml DCN");
             return false;
         }
-
-        if (args.length == 1) {
-            System.out.println("Missing 2nd arg for where criteria, ie CLM_NBR, PAT_ACCT_NBR, BR, DCN ");
-            return false;
-        }
         return true;
     }
 
     private static String createOutputString(List<String> values, String whereCriteria) {
-        StringBuilder sql = new StringBuilder(String.format("UPDATE PVSP001.CLM2325T SET PAT_DOB='%s',%n PAT_F_NM='%s', PAT_M_INI='%s',%n PAT_L_NM='%s',%n PAT_LN1_ADR='%s',%n PAT_CTY_ADR='%s',%n PAT_ST_ADR='%s', PAT_ZIP_ADR='%s',%n MEMBR_F_NM='%s',%n MEMBR_M_INI='%s', MEMBR_L_NM='%s',%n MEMBR_LN1_ADR='%s',%n MEMBR_CTY_ADR='%s',%n MEMBR_ST_ADR='%s', MEMBR_ZIP_ADR='%s',%n RND_PROV_F_NM='%s',%n RND_PROV_L_NM='%s',%n PRC_DPA_TAX_ID='%s'", values.toArray(new String[]{})));
+        StringBuilder sql = new StringBuilder(String.format("UPDATE PVSP001.CLM2325T SET PAT_DOB='%s', PAT_F_NM='%s', PAT_M_INI='%s', PAT_L_NM='%s', PAT_LN1_ADR='%s', PAT_CTY_ADR='%s', PAT_ST_ADR='%s', PAT_ZIP_ADR='%s', MEMBR_F_NM='%s', MEMBR_M_INI='%s', MEMBR_L_NM='%s', MEMBR_LN1_ADR='%s', MEMBR_CTY_ADR='%s', MEMBR_ST_ADR='%s', MEMBR_ZIP_ADR='%s', RND_PROV_F_NM='%s', RND_PROV_L_NM='%s', PRC_DPA_TAX_ID='%s'", values.toArray(new String[]{})));
         return sql.toString();
     }
 
@@ -129,7 +120,7 @@ public class SqlFromXmlBuilder {
         return elementNames;
     }
 
-    private void writeSql(String message) {
+    private void writeText(String message) {
         try {
             if (message != null) {
                 outputFile.write(message);
