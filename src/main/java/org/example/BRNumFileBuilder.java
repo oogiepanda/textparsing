@@ -9,11 +9,6 @@ import java.util.Arrays;
 import java.util.List;
 
 public class BRNumFileBuilder {
-    private static int patDobMissingCounter = 0;
-    private static int mbrDobMissingCounter = 0;
-    private static int badMembrIdCounter = 0;
-    private static final int MAX_LINES = 5000;
-
     public static final String PAT_DOB = "Patient.DateOfBirth";
     public static final String PAT_FNAME = "Patient.IndividualName.First";
     public static final String PAT_MI = "Patient.IndividualName.MiddleInitial";
@@ -46,19 +41,16 @@ public class BRNumFileBuilder {
 
     private FileWriter outputFile;
     private int fileCounter = 0;
-    private int outputFileLineCounter = 0;
-    private String inputFileName;
 
     public BRNumFileBuilder(String inputFileName) {
         try {
-            this.inputFileName = inputFileName;
-            outputFile = createFileWriter(inputFileName, MAX_LINES);
+            outputFile = createFileWriter(inputFileName);
         } catch (IOException e) {
             log.error("Error: ", e);
         }
     }
 
-    private FileWriter createFileWriter(String inputFileName, int maxLines) throws IOException {
+    private FileWriter createFileWriter(String inputFileName) throws IOException {
         int lastIndex = inputFileName.lastIndexOf(File.separator);
         String path = inputFileName.substring(0, lastIndex + 1);
         String nuFileName = path + inputFileName.substring(lastIndex + 1, inputFileName.lastIndexOf(".")) + "_" + ++fileCounter + ".txt";
@@ -69,13 +61,13 @@ public class BRNumFileBuilder {
         if (!checkArgs(args)) {
             return;
         }
-        BRNumFileBuilder sqlBuilder = new BRNumFileBuilder(args[0]);
+        BRNumFileBuilder fileBuilder = new BRNumFileBuilder(args[0]);
 
         try {
             XmlScraper myScraper = new XmlScraper();
             BufferedReader inputFile = new BufferedReader(new FileReader(args[0]));
             String line = inputFile.readLine();
-            List<String> elementNames = sqlBuilder.createElementNames(args);
+            List<String> elementNames = fileBuilder.createElementNames(args);
             int lineCounter = 0;
 
             while (line != null) {
@@ -83,13 +75,13 @@ public class BRNumFileBuilder {
                 String sql = createOutputString(values, "");
                 lineCounter++;
 
-                sqlBuilder.writeText(sql);
+                fileBuilder.writeText(sql);
                 line = inputFile.readLine();
             }
-            sqlBuilder.closeFiles();
+            fileBuilder.closeFiles();
             System.out.println(String.format("%s XmlLinesRead: %d", args[0], lineCounter));
         } catch (Exception e) {
-            sqlBuilder.writeText(e.getMessage());
+            fileBuilder.writeText(e.getMessage());
             log.error("Error: ", e);
         }
     }
@@ -103,8 +95,7 @@ public class BRNumFileBuilder {
     }
 
     private static String createOutputString(List<String> values, String whereCriteria) {
-        StringBuilder sql = new StringBuilder(String.format("UPDATE PVSP001.CLM2325T SET PAT_DOB='%s', PAT_F_NM='%s', PAT_M_INI='%s', PAT_L_NM='%s', PAT_LN1_ADR='%s', PAT_CTY_ADR='%s', PAT_ST_ADR='%s', PAT_ZIP_ADR='%s', MEMBR_F_NM='%s', MEMBR_M_INI='%s', MEMBR_L_NM='%s', MEMBR_LN1_ADR='%s', MEMBR_CTY_ADR='%s', MEMBR_ST_ADR='%s', MEMBR_ZIP_ADR='%s', RND_PROV_F_NM='%s', RND_PROV_L_NM='%s', PRC_DPA_TAX_ID='%s'", values.toArray(new String[]{})));
-        return sql.toString();
+        return String.format("UPDATE PVSP001.CLM2325T SET PAT_DOB='%s', PAT_F_NM='%s', PAT_M_INI='%s', PAT_L_NM='%s', PAT_LN1_ADR='%s', PAT_CTY_ADR='%s', PAT_ST_ADR='%s', PAT_ZIP_ADR='%s', MEMBR_F_NM='%s', MEMBR_M_INI='%s', MEMBR_L_NM='%s', MEMBR_LN1_ADR='%s', MEMBR_CTY_ADR='%s', MEMBR_ST_ADR='%s', MEMBR_ZIP_ADR='%s', RND_PROV_F_NM='%s', RND_PROV_L_NM='%s', PRC_DPA_TAX_ID='%s'", values.toArray(new String[]{}));
     }
 
     private List<String> createElementNames(String[] inputArgs) {
@@ -126,12 +117,6 @@ public class BRNumFileBuilder {
                 outputFile.write(message);
                 outputFile.write(System.lineSeparator());
                 System.out.println(message);
-                if (outputFileLineCounter++ == MAX_LINES) {
-                    outputFileLineCounter = 0;
-                    outputFile.write("commit;");
-                    outputFile.close();
-                    outputFile = createFileWriter(inputFileName, MAX_LINES);
-                }
             }
         } catch (IOException e) {
             log.error("Error: ", e);
