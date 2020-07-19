@@ -1,13 +1,12 @@
 package org.example;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
-
-import org.apache.commons.lang3.StringUtils;
 
 public class BRNumFileCleaner {
     public static final String PAT_DOB = "Patient.DateOfBirth";
@@ -72,13 +71,12 @@ public class BRNumFileCleaner {
 
             System.out.println(String.format("%s XmlLinesRead: %d", args[0], lineCounter));
         } catch (Exception e) {
-//            fileBuilder.writeText(e.getMessage());
+            fileBuilder.writeText(e.getMessage());
             System.out.println(lineCounter);
             e.printStackTrace();
         }
     }
 
-    //change the HashMap to HashMap<String, List<String>>
     public static HashMap<String, List<String>> buildHashMap(String[] args) {
         BRNumFileCleaner fileBuilder = new BRNumFileCleaner(args[0]);
         HashMap<String, List<String>> old2NuMap = new HashMap<>();
@@ -86,7 +84,6 @@ public class BRNumFileCleaner {
         try {
             BufferedReader inputFile = new BufferedReader(new FileReader(args[0]));
             String line = inputFile.readLine();
-// StringUtils.isBlank(), string.trim()
             while (line != null) {
                 List<String> tokens = getTokensWithCollection(line);
                 String oldBR = tokens.get(1).trim();
@@ -98,27 +95,14 @@ public class BRNumFileCleaner {
                     } else {
                         old2NuMap.put(oldBR, entries);
                     }
-                    // make another fileBuilder and Buffered Reader to reread the file and search for duplicate BR
-//                    BRNumFileCleaner fileBuilder2 = new BRNumFileCleaner(args[0]);
-//                    BufferedReader inputFile2 = new BufferedReader(new FileReader(args[0]));
-//                    String line2 = inputFile2.readLine();
-//                    while (line2 != null) {
-//                        List<String> tokens2 = getTokensWithCollection(line2);
-//                        String scanBR = tokens2.get(1);
-//                        if (old2NuMap.containsKey(scanBR)) {
-//                            entries.add(line);
-//                        }
-//                    }
-//                    fileBuilder2.closeFiles();
                 }
                 lineCounter++;
-
                 line = inputFile.readLine();
             }
             fileBuilder.closeFiles();
             System.out.println(String.format("%s XmlLinesRead: %d", args[0], lineCounter));
         } catch (Exception e) {
-//            fileBuilder.writeText(e.getMessage());
+            fileBuilder.writeText(e.getMessage());
             System.out.println(lineCounter);
             e.printStackTrace();
         }
@@ -132,21 +116,22 @@ public class BRNumFileCleaner {
         try {
             BufferedReader inputFile = new BufferedReader(new FileReader(args[1]));
             String line = inputFile.readLine();
+            HashMap<String, List<String>> outputLinesMap = new HashMap<>();
             while (line != null) {
                 List<String> tokens = getTokensWithCollection(line);
                 String oldBR = tokens.get(2).trim();
                 if (old2NuMap.containsKey(oldBR)) {
+                    outputLinesMap.put(oldBR,old2NuMap.get(oldBR));
 //                    fileBuilder.writeText(old2NuMap.get(oldBR));
-                    List<String> messages = old2NuMap.get(oldBR);
-                    fileBuilder.writeText(old2NuMap.get(oldBR));
                 }
                 lineCounter++;
                 line = inputFile.readLine();
             }
+            fileBuilder.writeText(outputLinesMap);
             fileBuilder.closeFiles();
             System.out.println(String.format("%s XmlLinesRead: %d", args[0], lineCounter));
         } catch (Exception e) {
-//            fileBuilder.writeText(e.getMessage());
+            fileBuilder.writeText(e.getMessage());
             System.out.println(lineCounter);
             e.printStackTrace();
         }
@@ -183,10 +168,22 @@ public class BRNumFileCleaner {
         return elementNames;
     }
 
+    private void writeText(HashMap<String,List<String>> outputLines) {
+        if (outputLines != null) {
+            outputLines.values().forEach(l -> writeText(l));
+        }
+    }
+
     private void writeText(List<String> message) {
+        if (message != null) {
+            message.forEach(m -> writeText(m));
+        }
+    }
+
+    private void writeText(String message) {
         try {
             if (message != null) {
-                outputFile.write(message.get(0));
+                outputFile.write(message);
                 outputFile.write(System.lineSeparator());
                 System.out.println(message);
             }
