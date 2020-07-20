@@ -39,21 +39,41 @@ public class BRNumFileCleaner {
     private static final String[] DEFAULT_ELEMENT_NAMES = new String[]{PAT_DOB, PAT_FNAME, PAT_MI, PAT_LNAME, PAT_ST, PAT_CITY, PAT_STATE, PAT_ZIP, MBR_FNAME, MBR_MI, MBR_LNAME, MBR_ST, MBR_CITY, MBR_STATE, MBR_ZIP, PROV_FNAME, PROV_LNAME, PROV_TAX_ID, CLM_BR_NBR, CLM_PROC_DCN, PAT_ACCT_NBR, MBR_ID, MBR_DOB};
     private static Logger log = LoggerFactory.getLogger(BRNumFileCleaner.class);
 
-    private FileWriter outputFile;
+    private FileWriter outputFileCSV;
+    private FileWriter outputFileXML;
+    private BufferedReader inputFileOldVsNew;
+    private BufferedReader inputFileClaims;
+    private BufferedReader inputFileXML;
     private int fileCounter = 0;
 
-    public BRNumFileCleaner(String inputFileName) {
+    public BRNumFileCleaner(String[] fileNames) {
         try {
-            outputFile = createFileWriter(inputFileName);
+            outputFileCSV = createFileWriter(fileNames[1]);
+            outputFileXML = createFileWriter(fileNames[2]);
+            inputFileOldVsNew = new BufferedReader(new FileReader(fileNames[0]));
+            inputFileClaims = new BufferedReader(new FileReader(fileNames[1]));
+            inputFileXML = new BufferedReader(new FileReader(fileNames[2]));
         } catch (IOException e) {
             log.error("Error: ", e);
         }
     }
 
+    public BufferedReader getInputFileOldVsNew() {
+        return inputFileOldVsNew;
+    }
+
+    public BufferedReader getInputFileClaims() {
+        return inputFileClaims;
+    }
+
+    public BufferedReader getInputFileXML() {
+        return inputFileXML;
+    }
+
     private FileWriter createFileWriter(String inputFileName) throws IOException {
         int lastIndex = inputFileName.lastIndexOf(File.separator);
         String path = inputFileName.substring(0, lastIndex + 1);
-        String nuFileName = path + inputFileName.substring(lastIndex + 1, inputFileName.lastIndexOf(".")) + "_" + ++fileCounter + ".txt";
+        String nuFileName = path + inputFileName.substring(lastIndex + 1, inputFileName.lastIndexOf(".")) + "_output.txt";
         return new FileWriter(new File(nuFileName));
     }
 
@@ -61,29 +81,30 @@ public class BRNumFileCleaner {
         if (!checkArgs(args)) {
             return;
         }
-        BRNumFileCleaner fileBuilder = new BRNumFileCleaner(args[0]);
+        BRNumFileCleaner fileBuilder = new BRNumFileCleaner(args);
         int lineCounter = 0;
         try {
             XmlScraper myScraper = new XmlScraper();
-            HashMap<String, List<String>> old2NuMap = buildHashMap(args);
-            compareAndOutput(args, old2NuMap);
+            HashMap<String, List<String>> old2NuMap = buildHashMap(args, fileBuilder);
+            compareAndOutput(args, old2NuMap, fileBuilder);
             BufferedReader inputFile = new BufferedReader(new FileReader(args[1]));
 
             System.out.println(String.format("%s XmlLinesRead: %d", args[0], lineCounter));
+            fileBuilder.closeFiles();
         } catch (Exception e) {
-            fileBuilder.writeText(e.getMessage());
+            fileBuilder.writeCSVText(e.getMessage());
             System.out.println(lineCounter);
             e.printStackTrace();
         }
     }
 
-    public static HashMap<String, List<String>> buildHashMap(String[] args) {
-        BRNumFileCleaner fileBuilder = new BRNumFileCleaner(args[0]);
+    public static HashMap<String, List<String>> buildHashMap(String[] args, BRNumFileCleaner fileBuilder) {
+//        BRNumFileCleaner fileBuilder = new BRNumFileCleaner(args[0]);
         HashMap<String, List<String>> old2NuMap = new HashMap<>();
         int lineCounter = 0;
         try {
-            BufferedReader inputFile = new BufferedReader(new FileReader(args[0]));
-            String line = inputFile.readLine();
+//            BufferedReader inputFile = new BufferedReader(new FileReader(args[0]));
+            String line = fileBuilder.getInputFileOldVsNew().readLine();
             while (line != null) {
                 List<String> tokens = getTokensWithCollection(line);
                 String oldBR = tokens.get(1).trim();
@@ -97,12 +118,10 @@ public class BRNumFileCleaner {
                     }
                 }
                 lineCounter++;
-                line = inputFile.readLine();
+                line = fileBuilder.getInputFileOldVsNew().readLine();
             }
-            fileBuilder.closeFiles();
             System.out.println(String.format("%s XmlLinesRead: %d", args[0], lineCounter));
         } catch (Exception e) {
-            fileBuilder.writeText(e.getMessage());
             System.out.println(lineCounter);
             e.printStackTrace();
         }
@@ -110,12 +129,12 @@ public class BRNumFileCleaner {
     }
 
 
-    public static void compareAndOutput(String[] args, HashMap<String, List<String>> old2NuMap) {
-        BRNumFileCleaner fileBuilder = new BRNumFileCleaner(args[1]);
+    public static void compareAndOutput(String[] args, HashMap<String, List<String>> old2NuMap, BRNumFileCleaner fileBuilder) {
+//        BRNumFileCleaner fileBuilder = new BRNumFileCleaner(args[1]);
         int lineCounter = 0;
         try {
-            BufferedReader inputFile = new BufferedReader(new FileReader(args[1]));
-            String line = inputFile.readLine();
+//            BufferedReader inputFile = new BufferedReader(new FileReader(args[1]));
+            String line = fileBuilder.getInputFileClaims().readLine();
             HashMap<String, List<String>> outputLinesMap = new HashMap<>();
             while (line != null) {
                 List<String> tokens = getTokensWithCollection(line);
@@ -125,13 +144,11 @@ public class BRNumFileCleaner {
 //                    fileBuilder.writeText(old2NuMap.get(oldBR));
                 }
                 lineCounter++;
-                line = inputFile.readLine();
+                line = fileBuilder.getInputFileClaims().readLine();
             }
-            fileBuilder.writeText(outputLinesMap);
-            fileBuilder.closeFiles();
+            fileBuilder.writeCSVText(outputLinesMap);
             System.out.println(String.format("%s XmlLinesRead: %d", args[0], lineCounter));
         } catch (Exception e) {
-            fileBuilder.writeText(e.getMessage());
             System.out.println(lineCounter);
             e.printStackTrace();
         }
@@ -168,23 +185,36 @@ public class BRNumFileCleaner {
         return elementNames;
     }
 
-    private void writeText(HashMap<String,List<String>> outputLines) {
+    private void writeCSVText(HashMap<String,List<String>> outputLines) {
         if (outputLines != null) {
-            outputLines.values().forEach(l -> writeText(l));
+            outputLines.values().forEach(l -> writeCSVText(l));
         }
     }
 
-    private void writeText(List<String> message) {
+    private void writeCSVText(List<String> message) {
         if (message != null) {
-            message.forEach(m -> writeText(m));
+            message.forEach(m -> writeCSVText(m));
         }
     }
 
-    private void writeText(String message) {
+    private void writeCSVText(String message) {
         try {
             if (message != null) {
-                outputFile.write(message);
-                outputFile.write(System.lineSeparator());
+                outputFileCSV.write(message);
+                outputFileCSV.write(System.lineSeparator());
+                System.out.println(message);
+            }
+        } catch (IOException e) {
+            log.error("Error: ", e);
+        }
+    }
+
+
+    private void writeXMLText(String message) {
+        try {
+            if (message != null) {
+                outputFileXML.write(message);
+                outputFileXML.write(System.lineSeparator());
                 System.out.println(message);
             }
         } catch (IOException e) {
@@ -194,7 +224,7 @@ public class BRNumFileCleaner {
 
     private void closeFiles() {
         try {
-            outputFile.close();
+            outputFileCSV.close();
         } catch (IOException e) {
             log.error("Error: ", e);
         }
