@@ -1,4 +1,4 @@
-<VSPClaimRequestxmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"xmlns:xs=\"http://www.w3.org/2001/XMLSchema\">
+<VSPClaimRequest>
 	<DCN>A00027676395</DCN>
 	<ReceivedDate>07/08/2020</ReceivedDate>
 	<BatchLocator>AF1</BatchLocator>

@@ -72,9 +72,10 @@ public class BRNumFileCleaner {
             HashMap<String, List<String>> old2NuMap = buildHashMap(fileBuilder);
             old2NuMap = compareAndOutputCSV(old2NuMap, fileBuilder);
             compareAndOutputXML(old2NuMap, fileBuilder);
-            fileBuilder.closeFiles();
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            fileBuilder.closeFiles();
         }
     }
 
